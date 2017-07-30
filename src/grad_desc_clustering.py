@@ -48,7 +48,7 @@ class GDC:
     def train_and_cost(self, tp, K):
         """Train GDC adn report the cost"""
         W, X_bar, _ = self.train(tp.X, K, tp.lr, tp.epochs)
-        return self.cost(X, W, X_bar)
+        return self.cost(tp.X, W, X_bar)
 
 
     def _compute_p(self, W):

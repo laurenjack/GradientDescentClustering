@@ -10,14 +10,10 @@ class ConvexOptimizer:
         return self._bin_search(tp, ps)
 
     def _bin_search(self, tp, ps):
+        # Terminating case
+        if ps.mid_is_min() and ps.is_final:
+            return ps.k_mid
         left, middle, right = self._compute_lmr(tp, ps)
-        # Terminating cases
-        if left.mid_is_min() and left.is_final:
-            return left.k_mid[1]
-        if right.mid_is_min() and right.is_final:
-            return right.k_mid[1]
-        if middle.mid_is_min() and middle.is_final:
-            return middle.k_mid[1]
         # Recursive cases
         if left.mid_is_min():
             return self._bin_search(tp, left)
