@@ -30,10 +30,13 @@ class GDC:
         dW = p_prod/pp_mean * np.sum(dist_sq, axis=2)
         #Gradient w.r.t the centres
         n, K = p.shape
+        _, d = X_bar.shape
         p_broadcast = p.reshape(n, K, 1)
         dX_bar = np.sum(p_broadcast * -x_diff, axis = 0) * 2.0
         over_n = 1.0/float(n)
-        return over_n * dW, over_n * dX_bar
+        over_d = 1.0/float(d)
+        K = over_n * over_d
+        return K * dW, K * dX_bar
 
     def cost(self, X, W, X_bar):
         n, K = W.shape

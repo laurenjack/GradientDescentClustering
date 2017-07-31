@@ -6,7 +6,7 @@ import k_means
 import numpy as np
 
 K = 4
-lr = 2.0
+lr = 4.0
 epochs = 120
 # Generate the clusters
 clusters, actual_centres = k_gaussian_clusters(K)

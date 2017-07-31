@@ -31,6 +31,7 @@ class KMeans:
 
 
 
+
 def _compute_diff(X, X_bar):
     n, d = X.shape
     K, _ = X_bar.shape
