@@ -15,7 +15,7 @@ def cost_of_centres(clusters, centres):
     K, d = centres.shape
     d = float(d)
     n = float(sum([len(cluster) for cluster in clusters]))
-    return sum([sum([np.sum((x - centres[k]) ** 2.0) for x in cluster]) for k in xrange(K)]) /(n * d)
+    return sum([sum([np.sum((x - centres[k]) ** 2.0) for x in clusters[k]]) for k in xrange(K)]) /(n * d)
 
 def find_closest_to(X, centres):
     """Associate each point x with the closest centre.
@@ -33,7 +33,7 @@ def find_closest_to(X, centres):
     K, _ = centres.shape
     dist_from_each = np.sum(dist_sq, axis=2)
     closest_to = np.argmin(dist_from_each, axis=1)
-    clusters = [[]] * K
+    clusters = [[] for k in xrange(K)]
     #Assign each point to its cluster
     for i in xrange(n):
         k = closest_to[i]

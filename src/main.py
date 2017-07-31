@@ -4,12 +4,13 @@ from convex_opt import *
 from centre_animator import animate
 import k_means
 import numpy as np
+import cluster_utils
 
 K = 4
-lr = 4.0
+lr = 0.08
 epochs = 120
 # Generate the clusters
-clusters, actual_centres = k_gaussian_clusters(K)
+clusters, actual_centres, global_opt = k_gaussian_clusters(K)
 X = np.concatenate(clusters, axis=0)
 
 # Choose K for GDC
@@ -30,6 +31,13 @@ all_prev_lists = [all_prev_gdc, all_prev_kMeans]
 
 # Animate
 animate(clusters, all_prev_lists)
+
+#Compute total cost of each clustering alg
+gdc_C = cluster_utils.cost_of_closest_to(X, X_bar_gdc)
+kMeans_C = cluster_utils.cost_of_closest_to(X, X_bar_kMeans)
+print "Global Optimum: "+str(global_opt)
+print "GDC: "+str(gdc_C)
+print "K Means: "+str(kMeans_C)
 
 # n_div_k,  _, d = clusters.shape
 # n = n_div_k * K
