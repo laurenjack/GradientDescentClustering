@@ -18,7 +18,7 @@ class TestGdc(TestCase):
 
         #Compute actual gradients
         gdc = GDC()
-        dW, dX_bar = gdc.compute_grads(X, X_bar, W)
+        dW, dX_bar, _ = gdc.compute_grads(X, X_bar, W)
 
         #Assertions
         self.assertAlmostEqual(exp_dW_01, dW[0, 1])

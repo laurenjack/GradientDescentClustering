@@ -7,7 +7,7 @@ import numpy as np
 import cluster_utils
 
 K = 4
-lr = 0.08
+lr = 0.18
 epochs = 120
 # Generate the clusters
 clusters, actual_centres, global_opt = k_gaussian_clusters(K)
@@ -23,7 +23,7 @@ gdc = GDC()
 X_bar = np.random.uniform(low= -5.0, high=5.0, size=(K, 2))
 
 # Train the clustering algorithms
-W, X_bar_gdc, all_prev_gdc = gdc.train(X, K, lr, epochs, X_bar)
+W, X_bar_gdc, all_prev_gdc, last_grads = gdc.train(X, K, lr, epochs, X_bar)
 
 kMeans = k_means.KMeans()
 X_bar_kMeans, all_prev_kMeans = kMeans.train(X, K, epochs, X_bar)

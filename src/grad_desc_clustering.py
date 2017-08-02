@@ -14,10 +14,11 @@ class GDC:
         #Train
         for e in xrange(epochs):
             all_prev.append(X_bar)
-            dW, dX_bar = self.compute_grads(X, X_bar, W)
+            dW, dX_bar, p_prod = self.compute_grads(X, X_bar, W)
             W -= lr*dW
             X_bar = X_bar - lr*dX_bar
-        return W, X_bar, all_prev
+            gradients = Gradients(p_prod, dW, dX_bar)
+        return W, X_bar, all_prev, gradients
 
     def compute_grads(self, X, X_bar, W):
         p = self._compute_p(W)
@@ -26,7 +27,7 @@ class GDC:
         dist_sq = x_diff ** 2.0
         #Scale by average p *(1 - p)
         p_prod = p * (1 - p)
-        pp_mean = np.mean(p_prod) + 0.0000001
+        pp_mean = np.mean(p_prod) #+ 0.0000001
         dW = p_prod/pp_mean * np.sum(dist_sq, axis=2)
         #Gradient w.r.t the centres
         n, K = p.shape
@@ -36,7 +37,7 @@ class GDC:
         over_n = 1.0/float(n)
         over_d = 1.0/float(d)
         c = over_d
-        return c * dW, c * dX_bar
+        return c * dW, c * dX_bar, p_prod/pp_mean
 
     def cost(self, X, W, X_bar):
         n, K = W.shape
@@ -66,4 +67,15 @@ class GDC:
         X_3 = X.reshape(n, 1, d)
         X_bar_3 = X_bar.reshape(1, K, d)
         return X_3 - X_bar_3
+
+
+class Gradients:
+    """Class responsible for holding tracked gradients
+    over time"""
+
+    def __init__(self, last_p_prod, last_dW, last_dX_bar):
+        self.last_p_prod = last_p_prod
+        self.last_dW = last_dW
+        self.last_dX_bar = last_dX_bar
+
 
