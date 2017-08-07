@@ -12,13 +12,16 @@ class GDC:
         W = np.random.randn(n, K)
         all_prev = []
         #Train
+        all_dW = np.zeros(epochs)
+        all_dX_bar = np.zeros(epochs)
         for e in xrange(epochs):
             all_prev.append(X_bar)
-            dW, dX_bar, p_prod = self.compute_grads(X, X_bar, W)
+            dW, dX_bar = self.compute_grads(X, X_bar, W)
             W -= lr*dW
             X_bar = X_bar - lr*dX_bar
-            gradients = Gradients(p_prod, dW, dX_bar)
-        return W, X_bar, all_prev, gradients
+            all_dW[e] = np.mean(abs(dW))
+            all_dX_bar[e] = np.mean(abs(dX_bar))
+        return W, X_bar, all_prev, (all_dW, all_dX_bar)
 
     def compute_grads(self, X, X_bar, W):
         p = self._compute_p(W)
@@ -26,18 +29,22 @@ class GDC:
         #Gradient w.r.t the weights
         dist_sq = x_diff ** 2.0
         #Scale by average p *(1 - p)
-        p_prod = p * (1 - p)
-        pp_mean = np.mean(p_prod) #+ 0.0000001
-        dW = p_prod/pp_mean * np.sum(dist_sq, axis=2)
-        #Gradient w.r.t the centres
+        #p_prod = p * (1 - p)
         n, K = p.shape
         _, d = X_bar.shape
         p_broadcast = p.reshape(n, K, 1)
+        sum_dist_sq = np.sum(dist_sq, axis=2)
+        C = p * sum_dist_sq
+        #pp_mean = np.mean(p_prod) #+ 0.0000001
+        dW = p * (sum_dist_sq - np.sum(C, axis=1).reshape((n, 1)))
+        #dW = p_prod * np.sum(dist_sq, axis=2) #/pp_mean
+        dW = dW/(np.mean(abs(dW)))
+        #Gradient w.r.t the centres
         dX_bar = np.sum(p_broadcast * -x_diff, axis = 0) * 2.0
         over_n = 1.0/float(n)
         over_d = 1.0/float(d)
-        c = over_d
-        return c * dW, c * dX_bar, p_prod/pp_mean
+        c = 1.0 #over_d
+        return c * dW, c * dX_bar #, p_prod#/pp_mean
 
     def cost(self, X, W, X_bar):
         n, K = W.shape
