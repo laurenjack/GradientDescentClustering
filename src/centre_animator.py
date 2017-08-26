@@ -36,7 +36,7 @@ def animate(clusters, all_prev_lists):
             scat.set_offsets(as_list)
 
     #Run the animation
-    ani = FuncAnimation(fig, update, frames=epochs - 1, init_func=init, interval=1000, repeat=False)
+    ani = FuncAnimation(fig, update, frames=epochs - 1, init_func=init, interval=50, repeat=False)
     plt.show()
 
 
