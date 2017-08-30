@@ -1,15 +1,18 @@
 import numpy as np
-
+import math
 
 class GDC:
 
 
-    def train(self, X, K, lr, epochs, X_bar=None):
+    def train(self, X, K, lr, epochs, X_bar=None, L=None):
         n, d = X.shape
         #Initialize parameters
         if X_bar is None:
             X_bar = np.random.uniform(low= -5.0, high=5.0, size=(K, d))
-        W = np.random.randn(n, K)
+        if L is None:
+            W = np.random.randn(n, K)
+        else:
+            W = np.random.randn(L, K)
         all_prev = []
         #Train
         all_dW = np.zeros(epochs)
@@ -18,19 +21,18 @@ class GDC:
         dX_bar_max = np.zeros(epochs)
         p_sum_max = np.zeros(epochs)
         mm_dW = 1.0
-        is_exp = False
         for e in xrange(epochs):
             # if e == 100:
             #     lr *= 0.001
             all_prev.append(X_bar)
             # if e % 20 == 0:
             #     is_exp = not is_exp
-            if is_exp:
-                dW, dX_bar, p = self.compute_grads_exp(X, X_bar, W)
+            if L is None:
+                dW, dX_bar, p = self.compute_grads(X, X_bar, W)
             else:
-                dW, dX_bar, mm_dW, p = self.compute_grads(X, X_bar, W, mm_dW)
+                dW, dX_bar, p = self.compute_grads_rbf(X, X_bar, W)
             #dW, dX_bar, p = self.compute_grads_per_clust_cost(X, X_bar, W)
-            W -= 1.0*dW
+            W -= lr*dW
             X_bar = X_bar - lr*dX_bar
             mag_dW = abs(dW)
             mag_dX_bar = abs(dX_bar)
@@ -89,13 +91,48 @@ class GDC:
         mag_sf = (np.sum(dW ** 2.0) + np.sum(dX_bar ** 2.0)) ** 0.5
         dW/= np.sum(dW ** 2.0) ** 0.5 + 0.001
         #return dW / (mag_sf), dX_bar / (mag_sf), mm_dW, p
-        return dW, dX_bar, C, p
+        return dW, dX_bar, p
 
-    def ce_softmax_layer(self, X, X_bar, W):
-        dW, dX_bar, C, p = self.compute_grads(self, X, X_bar, W)
-        Ck = np.sum(C, axis=0)
-        exp_Ck = np.exp(Ck)
-        z = exp_Ck / np.sum(exp_Ck)
+    def compute_grads_redundancy(self, X, X_bar, W):
+        p = self._compute_p(W)
+        L, K = p.shape
+        x_diff = self._compute_diff(X, X_bar)
+        dist_sq = x_diff ** 2.0
+        sq_sum_nk = np.sum(dist_sq, axis=2)
+        sq_sum_k = np.sum(sq_sum_nk, axis=0)
+        x_diff_sum_kd = np.sum(x_diff, axis=0)
+
+        #dW = p * (sq_sum_k.reshape(1, K) - np.sum(p * sq_sum_k, axis=1).reshape(L, 1))
+        dW = p * sq_sum_k - p * np.sum(p * sq_sum_k, axis=1).reshape(L, 1)
+        dW /= np.sum(dW ** 2.0) ** 0.5 + 0.001
+
+        p_sum = np.sum(p, axis=0)
+        dX_bar = 2.0 * p_sum.reshape(K, 1) * -x_diff_sum_kd
+
+        return dW, dX_bar, p
+        # _, d = X_bar.shape
+
+    def compute_grads_rbf(self, X, X_bar, W):
+        p = self._compute_p(W)
+        n, d = X.shape
+        L, K = p.shape
+        x_diff = self._compute_diff(X, X_bar)
+        dist_sq = x_diff ** 2.0
+        sq_sum_nk = np.sum(dist_sq, axis=2)
+        rbf = self.rbf(sq_sum_nk)
+        sum_rbf_k = rbf.sum(axis=0)
+        d_rbf_d_x_bar_n = (2.0 / math.pi) ** 0.5 * - x_diff *  rbf.reshape(n, K, 1)
+        d_rbf_d_x_bar = np.sum(d_rbf_d_x_bar_n, axis=0)
+        p_sum = np.sum(p, axis=0)
+        dX_bar = p_sum.reshape(K, 1) * d_rbf_d_x_bar
+
+        dW = p * (sum_rbf_k.reshape(1, K) - np.sum(p * sum_rbf_k, axis=1).reshape(L, 1))
+
+
+        #dX_bar = 2.0 * p_sum.reshape(K, 1) * -x_diff_sum_kd
+
+        return dW, dX_bar, p
+
 
     def compute_grads_exp(self, X, X_bar, W):
         p = self._compute_p(W)
@@ -169,6 +206,9 @@ class GDC:
         X_3 = X.reshape(n, 1, d)
         X_bar_3 = X_bar.reshape(1, K, d)
         return X_3 - X_bar_3
+
+    def rbf(self, sq_sum_nk):
+        return np.exp(-sq_sum_nk)
 
 
 class GradStats:

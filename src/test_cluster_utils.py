@@ -2,6 +2,8 @@ import numpy as np
 from unittest import TestCase
 from cluster_utils import *
 
+
+
 X = np.array([[-1.0, 1.0], [2.0, 2.0], [0.5, 0.5], [-0.5, 2.0], [1.0, 0.5], [1.5, 0], [-1.0, 3.0], [2.0, -1.0]])
 centres = np.array([[1.0, 0.0], [-1.0, -1.0], [-1.0, 2.0], [2.5, 2.5]])
 clusters = [[np.array([0.5, 0.5]), np.array([1.0, 0.5]), np.array([1.5, 0.0]), np.array([2.0, -1.0])],

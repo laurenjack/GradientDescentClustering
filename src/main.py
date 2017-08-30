@@ -6,8 +6,8 @@ import k_means
 import numpy as np
 import cluster_utils
 
-K = 8
-lr = 0.15
+K = 4
+lr = 1.5
 epochs = 500
 # Generate the clusters
 #clusters, actual_centres, global_opt = k_gaussian_clusters(K)
@@ -24,11 +24,11 @@ gdc = GDC()
 X_bar = np.random.uniform(low= -5.0, high=5.0, size=(K, 2))
 
 # Train the clustering algorithms
-p, X_bar_gdc, all_prev_gdc, all_grads = gdc.train(X, K, lr, epochs, X_bar)
+p, X_bar_gdc, all_prev_gdc, all_grads = gdc.train(X, K, lr, epochs, X_bar, L=4)
 #p, X_bar_gdc, all_prev_gdc = gdc.train_sgd(X, K, lr, epochs, 10, X_bar)
 
-kMeans = k_means.KMeans()
-X_bar_kMeans, all_prev_kMeans = kMeans.train(X, K, epochs, X_bar)
+#kMeans = k_means.KMeans()
+#X_bar_kMeans, all_prev_kMeans = kMeans.train(X, K, epochs, X_bar)
 #all_prev_lists = [all_prev_gdc, all_prev_kMeans]
 all_prev_lists = [all_prev_gdc]
 
@@ -37,10 +37,10 @@ animate(clusters, all_prev_lists)
 
 #Compute total cost of each clustering alg
 gdc_C = cluster_utils.cost_of_closest_to(X, X_bar_gdc)
-kMeans_C = cluster_utils.cost_of_closest_to(X, X_bar_kMeans)
+#kMeans_C = cluster_utils.cost_of_closest_to(X, X_bar_kMeans)
 print "Global Optimum: "+str(global_opt)
 print "GDC: "+str(gdc_C)
-print "K Means: "+str(kMeans_C)
+#print "K Means: "+str(kMeans_C)
 print "X_bar: "+str(X_bar_gdc)
 print "p : "+str(p)
 

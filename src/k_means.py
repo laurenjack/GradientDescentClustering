@@ -38,4 +38,3 @@ def _compute_diff(X, X_bar):
     X_3 = X.reshape(n, 1, d)
     X_bar_3 = X_bar.reshape(1, K, d)
     return X_3 - X_bar_3
-
