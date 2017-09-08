@@ -4,6 +4,44 @@ import math
 class GDC:
 
 
+    def train_groups(self, X, K, lr, epochs, X_bar):
+        all_prev = []
+        #Create groups
+        _, d = X_bar.shape
+        half_way = K/2
+        # firsts = X_bar[:half_way]
+        # seconds = X_bar[half_way:]
+        first_inds = np.arange(half_way/2)
+        second_inds = np.arange(half_way/2)
+
+        for e in xrange(epochs):
+            # first0 = X_bar[0].reshape(1, d)
+            # first1 = X_bar[1].reshape(1, d)
+            # second0 = X_bar[half_way].reshape(1, d)
+            second1 = X_bar[half_way+1].reshape(1, d)
+            all_prev.append(np.copy(X_bar))
+            #all_prev.append(np.concatenate((first0, first1, second0, second1), axis=0))
+            np.random.shuffle(first_inds)
+            np.random.shuffle(second_inds)
+            for i in xrange(0, half_way/2, 1):
+                f = first_inds[i]*2
+                s = second_inds[i]*2
+                first0 = X_bar[f].reshape(1, d)
+                first1 = X_bar[f+1].reshape(1, d)
+                second0 = X_bar[half_way+s].reshape(1, d)
+                second1 = X_bar[half_way+s+1].reshape(1, d)
+                training_x_bar = np.concatenate((first0, first1, second0, second1), axis=0)
+                #Actually train it now
+                dX_bar, p = self.compute_grads_cost_as_weight(X, training_x_bar)
+                X_bar[f] -= lr * dX_bar[0]
+                X_bar[f+1] -= lr * dX_bar[1]
+                X_bar[half_way+s] -= lr * dX_bar[2]
+                X_bar[half_way+s+1] -= lr * dX_bar[3]
+
+        return p, X_bar, all_prev, None
+
+
+
     def train(self, X, K, lr, epochs, X_bar=None, L=None):
         n, d = X.shape
         #Initialize parameters
@@ -20,20 +58,22 @@ class GDC:
         dW_max = np.zeros(epochs)
         dX_bar_max = np.zeros(epochs)
         p_sum_max = np.zeros(epochs)
-        mm_dW = 1.0
         for e in xrange(epochs):
             # if e == 100:
             #     lr *= 0.001
             all_prev.append(X_bar)
-            # if e % 20 == 0:
-            #     is_exp = not is_exp
             if L is None:
-                dW, dX_bar, p = self.compute_grads(X, X_bar, W)
+                dX_bar, p = self.compute_grads_soft_rbf(X, X_bar)
+                dW = 1.0
+                #dW, dX_bar, p = self.compute_grads(X, X_bar, W)
             else:
-                dW, dX_bar, p = self.compute_grads_rbf(X, X_bar, W)
+                dW, dX_bar, p = self.compute_grads_redundancy(X, X_bar, W)
+                #dX_bar, p = self.compute_grads_cost_as_weight(X, X_bar)
+                #dW = p
+                #dW, dX_bar, p = self.compute_grads_rbf(X, X_bar, W)
             #dW, dX_bar, p = self.compute_grads_per_clust_cost(X, X_bar, W)
-            W -= lr*dW
-            X_bar = X_bar - lr*dX_bar
+            #W -= lr*dW
+            X_bar = X_bar + lr*dX_bar
             mag_dW = abs(dW)
             mag_dX_bar = abs(dX_bar)
             all_dW[e] = np.mean(mag_dW)
@@ -48,21 +88,21 @@ class GDC:
         W = np.random.randn(n, K)
         all_prev = []
         # Train
-        mm_dW = 1.0
         batch_indicies = np.arange(n)
         p = np.zeros((n, K))
         for e in xrange(epochs):
-            if (e+1) % 60 == 0:
-                lr *= 0.1
+            # if (e+1) % 60 == 0:
+            #     lr *= 0.1
             all_prev.append(X_bar)
             X_bar = np.copy(X_bar)
             np.random.shuffle(batch_indicies)
             for k in xrange(0, n, m):
                 batch = batch_indicies[k:k + m]
-                dW, dX_bar, p[batch] = self.compute_grads_exp(X[batch], X_bar, W[batch])
+                dX_bar, p[batch] = self.compute_grads_cost_as_weight(X[batch], X_bar)
+                #dW, dX_bar, p[batch] = self.compute_grads_exp(X[batch], X_bar, W[batch])
                 #dW, dX_bar, mm_dW, p[batch] = self.compute_grads(X[batch], X_bar, W[batch], mm_dW)
                 # dW, dX_bar, p = self.compute_grads_per_clust_cost(X, X_bar, W)
-                W[batch] -= lr * dW
+                #W[batch] -= lr * dW
                 X_bar = X_bar - lr * dX_bar
         return p, X_bar, all_prev
 
@@ -93,18 +133,40 @@ class GDC:
         #return dW / (mag_sf), dX_bar / (mag_sf), mm_dW, p
         return dW, dX_bar, p
 
+    def compute_grads_cost_as_weight(self, X, X_bar):
+        x_diff = self._compute_diff(X, X_bar)
+        dist_sq = x_diff ** 2.0
+        C_ik = np.sum(dist_sq, axis=2)
+        p = self._compute_p(-C_ik)
+        n, K = p.shape
+        _, d = X_bar.shape
+        p_broadcast = p.reshape(n, K, 1)
+        dist_weighted_diff = -x_diff * C_ik.reshape(n, K, 1)
+        dist_weighted_diff_per_K = np.sum(p_broadcast * dist_weighted_diff, axis=1).reshape(n, 1, d)
+        dX_bar = 2.0 * np.sum(p.reshape(n, K, 1) * (-x_diff - (dist_weighted_diff - dist_weighted_diff_per_K)), axis=0)
+        dX_bar /= np.sum(dX_bar ** 2.0) ** 0.5 + 0.001
+        return dX_bar, p
+
     def compute_grads_redundancy(self, X, X_bar, W):
+        n, _ = X.shape
         p = self._compute_p(W)
         L, K = p.shape
         x_diff = self._compute_diff(X, X_bar)
         dist_sq = x_diff ** 2.0
         sq_sum_nk = np.sum(dist_sq, axis=2)
+        closest_clust = np.argmin(sq_sum_nk, axis=1)
+        min_sq_sum_n = np.amin(sq_sum_nk, axis=1)
+        lowered_cost = np.repeat(min_sq_sum_n.reshape(n, 1), L, axis=1)
+        #cost_funct_weighting = np.exp(min_sq_sum_n) / np.sum(np.exp(min_sq_sum_n))
+        x_diff_norm =  x_diff/sq_sum_nk.reshape(n, L, 1) ** 0.5
+        lowered_x_diff = lowered_cost.reshape(n, L, 1) ** 0.5 * x_diff_norm
+
         sq_sum_k = np.sum(sq_sum_nk, axis=0)
-        x_diff_sum_kd = np.sum(x_diff, axis=0)
+        x_diff_sum_kd = np.sum(lowered_x_diff , axis=0)
 
         #dW = p * (sq_sum_k.reshape(1, K) - np.sum(p * sq_sum_k, axis=1).reshape(L, 1))
         dW = p * sq_sum_k - p * np.sum(p * sq_sum_k, axis=1).reshape(L, 1)
-        dW /= np.sum(dW ** 2.0) ** 0.5 + 0.001
+        #dW /= np.sum(dW ** 2.0) ** 0.5 + 0.001
 
         p_sum = np.sum(p, axis=0)
         dX_bar = 2.0 * p_sum.reshape(K, 1) * -x_diff_sum_kd
@@ -133,6 +195,22 @@ class GDC:
 
         return dW, dX_bar, p
 
+
+    def compute_grads_soft_rbf(self, X, X_bar):
+        n, _ = X.shape
+        K, _ = X_bar.shape
+        x_diff = self._compute_diff(X, X_bar)
+        dist_sq = x_diff ** 2.0
+        sq_sum_nk = np.sum(dist_sq, axis=2)
+        rbf = self.rbf(sq_sum_nk)
+        scale = self._compute_p(-sq_sum_nk)
+        dX_bar_n = x_diff * (scale * rbf).reshape(n, K, 1)
+        mags = np.sum(dX_bar_n ** 2.0, axis=2) ** 0.5
+        avg_mag = np.mean(mags, axis=0)
+        dX_bar = 2 * np.sum(dX_bar_n, axis=0) / avg_mag.reshape(K, 1)
+        #dX_bar = 2 * np.sum(x_diff * (scale * rbf).reshape(n, K, 1), axis=0)
+        #dX_bar/= np.sum(dX_bar ** 2.0) ** 0.5 + 0.001
+        return dX_bar, scale
 
     def compute_grads_exp(self, X, X_bar, W):
         p = self._compute_p(W)
