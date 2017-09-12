@@ -3,15 +3,16 @@ from gradient_viewer import *
 
 
 
-K = 10
-d = 1000
-lr = 0.15
-epochs = 500
+K = 8
+d = 2
+lr = 0.05
+epochs = 800
 n_per_cluster = 5
 num_runs = 100
+m = 5
 
-total_grad_stats = run_and_report_grads(K, d, n_per_cluster, lr, epochs, num_runs)
-display_grads(total_grad_stats, epochs)
+total_grad_stats = run_and_report_grads(K, d, n_per_cluster, lr, epochs, num_runs, m=m)
+#display_grads(total_grad_stats, epochs)
 
 
 

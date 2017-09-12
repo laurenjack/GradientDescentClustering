@@ -91,19 +91,21 @@ class GDC:
         batch_indicies = np.arange(n)
         p = np.zeros((n, K))
         for e in xrange(epochs):
-            # if (e+1) % 60 == 0:
-            #     lr *= 0.1
+            if (e+1) % 50 == 0:
+                lr *= 0.35
+            if(e+1) % 100 == 0:
+                m = n
             all_prev.append(X_bar)
             X_bar = np.copy(X_bar)
             np.random.shuffle(batch_indicies)
             for k in xrange(0, n, m):
                 batch = batch_indicies[k:k + m]
-                dX_bar, p[batch] = self.compute_grads_cost_as_weight(X[batch], X_bar)
+                dX_bar, p[batch] = self.compute_grads_soft_rbf(X[batch], X_bar)
                 #dW, dX_bar, p[batch] = self.compute_grads_exp(X[batch], X_bar, W[batch])
                 #dW, dX_bar, mm_dW, p[batch] = self.compute_grads(X[batch], X_bar, W[batch], mm_dW)
                 # dW, dX_bar, p = self.compute_grads_per_clust_cost(X, X_bar, W)
                 #W[batch] -= lr * dW
-                X_bar = X_bar - lr * dX_bar
+                X_bar = X_bar + lr * dX_bar
         return p, X_bar, all_prev
 
     def compute_grads(self, X, X_bar, W):
@@ -202,8 +204,9 @@ class GDC:
         x_diff = self._compute_diff(X, X_bar)
         dist_sq = x_diff ** 2.0
         sq_sum_nk = np.sum(dist_sq, axis=2)
-        rbf = self.rbf(sq_sum_nk)
-        scale = self._compute_p(-sq_sum_nk)
+        rbf = self.rbf(0.5 * sq_sum_nk)
+        #scale = self._compute_p(-10*sq_sum_nk)
+        scale = self._compute_p(200 * rbf)
         dX_bar_n = x_diff * (scale * rbf).reshape(n, K, 1)
         mags = np.sum(dX_bar_n ** 2.0, axis=2) ** 0.5
         avg_mag = np.mean(mags, axis=0)

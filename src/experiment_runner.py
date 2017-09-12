@@ -6,7 +6,7 @@ import cluster_utils
 """Responsible for running multiple clustering runs, and reporting the results,
 as well as aspets of the training procedure such as the gradient over time."""
 
-def run_and_report_grads(K, d, n_per_cluster, lr, epochs, num_runs):
+def run_and_report_grads(K, d, n_per_cluster, lr, epochs, num_runs, m=None):
     """Run the GDC algorithm n times and report the
     result, as well as the gradient over time"""
     total_opt = 0
@@ -30,12 +30,14 @@ def run_and_report_grads(K, d, n_per_cluster, lr, epochs, num_runs):
         X_bar = np.random.uniform(low=-5.0, high=5.0, size=(K, d))
 
         # Train the clustering algorithms
-        W, X_bar_gdc, all_prev_gdc, grad_stats = gdc.train(X, K, lr, epochs, X_bar)
+        #W, X_bar_gdc, all_prev_gdc, grad_stats = gdc.train(X, K, lr, epochs, X_bar)
+        _, X_bar_gdc, all_prev_gdc = gdc.train_sgd(X, K, lr, epochs, m, X_bar)
+
 
         # Compute total cost of each clustering alg
         gdc_C = cluster_utils.cost_of_closest_to(X, X_bar_gdc)
 
-        total_grad_stats += grad_stats.as_np()
+        #total_grad_stats += grad_stats.as_np()
 
         # Update agregates
         total_opt += global_opt
@@ -45,4 +47,4 @@ def run_and_report_grads(K, d, n_per_cluster, lr, epochs, num_runs):
 
     print "Global Optimum: " + str(total_opt / 100.0)
     print "GDC: " + str(total_gdc / 100.0) + "  Percent Under: " + str(gdc_under)
-    return total_grad_stats/float(num_runs)
+    #return total_grad_stats/float(num_runs)
