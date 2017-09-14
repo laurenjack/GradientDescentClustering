@@ -6,7 +6,7 @@ import k_means
 import numpy as np
 import cluster_utils
 
-K = 4
+K = 20
 lr = 0.1
 epochs = 200
 # Generate the clusters
@@ -21,12 +21,12 @@ gdc = GDC()
 # K, _ = co.bin_search(tp, 0, 10)
 
 # Create same set of starting centres
-X_bar = np.random.uniform(low= -5.0, high=5.0, size=(K, 2))
+X_bar = np.random.uniform(low= -5.0, high=5.0, size=(35, 2))
 
 # Train the clustering algorithms
 #p, X_bar_gdc, all_prev_gdc, all_grads = gdc.train_groups(X, 8, lr, epochs, X_bar)
 #p, X_bar_gdc, all_prev_gdc, all_grads = gdc.train(X, K, lr, epochs, X_bar, L=None)
-p, X_bar_gdc, all_prev_gdc = gdc.train_sgd(X, K, lr, epochs, 5, X_bar)
+p, X_bar_gdc, all_prev_gdc = gdc.train_sgd(X, K, lr, epochs, 20, X_bar)
 
 #kMeans = k_means.KMeans()
 #X_bar_kMeans, all_prev_kMeans = kMeans.train(X, K, epochs, X_bar)

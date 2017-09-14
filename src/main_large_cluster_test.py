@@ -3,10 +3,10 @@ from gradient_viewer import *
 
 
 
-K = 8
-d = 2
-lr = 0.05
-epochs = 800
+K = 4
+d = 100
+lr = 0.1
+epochs = 400
 n_per_cluster = 5
 num_runs = 100
 m = 5
