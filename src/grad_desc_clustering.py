@@ -84,7 +84,7 @@ class GDC:
         return p, X_bar, all_prev, GradStats(all_dW, all_dX_bar, dW_max, dX_bar_max, p_sum_max)
 
     def train_sgd(self, X, K, lr, epochs, m, X_bar):
-        z = 0.5
+        z = 1.0
         n, d = X.shape
         W = np.random.randn(n, K)
         all_prev = []
@@ -92,9 +92,9 @@ class GDC:
         batch_indicies = np.arange(n)
         p = np.zeros((n, X_bar.shape[0]))
         for e in xrange(epochs):
-            if (e+1) % 60 == 0:
+            if (e+1) % 100 == 0:
                 lr *= 0.35
-            if(e+1) % 200 == 0:
+            if(e+1) % 300 == 0:
                 m = n
             all_prev.append(X_bar)
             X_bar = np.copy(X_bar)
@@ -107,8 +107,8 @@ class GDC:
                 # dW, dX_bar, p = self.compute_grads_per_clust_cost(X, X_bar, W)
                 #W[batch] -= lr * dW
                 X_bar = X_bar + lr * dX_bar
-                #z -= lr*np.sign(dC_dz)
-        # print "z: "+str(z)
+                z -= 0.1* z * np.sign(dC_dz)
+        print "z: "+str(z)
         return p, X_bar, all_prev
 
     def compute_grads(self, X, X_bar, W):
@@ -208,17 +208,17 @@ class GDC:
         dist_sq = x_diff ** 2.0
         sq_sum_nk = np.sum(dist_sq, axis=2)
         #rbf = self.rbf(0.5 * sq_sum_nk)
-        rbf = self.rbf((z / d) ** 2.0 * sq_sum_nk)
+        rbf = self.rbf(z ** 2.0 / float(d) * sq_sum_nk)
         #scale = self._compute_p(-10*sq_sum_nk)
         p = self._compute_p(200 * rbf)
-        dX_bar_n = (z / 1.0) ** 2.0 * x_diff * (p * rbf).reshape(n, K, 1)
+        dX_bar_n = z ** 2.0 * x_diff * (p * rbf).reshape(n, K, 1)
         mags = np.sum(dX_bar_n ** 2.0, axis=2) ** 0.5
         avg_mag = np.mean(mags, axis=0)
         dX_bar = 2 * np.sum(dX_bar_n, axis=0) / (avg_mag.reshape(K, 1) + 10 ** (-120))
         #dX_bar = 2 * np.sum(x_diff * (scale * rbf).reshape(n, K, 1), axis=0)
         #dX_bar/= np.sum(dX_bar ** 2.0) ** 0.5 + 0.001
         #Compute the z grad
-        dp_dz = 2 * z / 1.0 ** 2.0 * p * rbf * (-sq_sum_nk + np.sum(p * sq_sum_nk, axis=1).reshape(n, 1))
+        dp_dz = 2 * z * p * rbf * (-sq_sum_nk + np.sum(p * sq_sum_nk, axis=1).reshape(n, 1))
         dC_dz = np.sum(dp_dz * sq_sum_nk)
         return dX_bar, p, dC_dz
 
