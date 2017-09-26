@@ -222,6 +222,27 @@ class GDC:
         dC_dz = np.sum(dp_dz * sq_sum_nk)
         return dX_bar, p, dC_dz
 
+    def cg_soft_rbf_weights(self, X, X_bar, z):
+        n, d = X.shape
+        K, _ = X_bar.shape
+        x_diff = self._compute_diff(X, X_bar)
+        dist_sq = (z * x_diff) ** 2.0
+        sq_sum_nk = np.sum(dist_sq, axis=2)
+        #rbf = self.rbf(0.5 * sq_sum_nk)
+        rbf = self.rbf(sq_sum_nk / float(d))
+        #scale = self._compute_p(-10*sq_sum_nk)
+        p = self._compute_p(200 * rbf)
+        dX_bar_n = z ** 2.0 * x_diff * (p * rbf).reshape(n, K, 1)
+        mags = np.sum(dX_bar_n ** 2.0, axis=2) ** 0.5
+        avg_mag = np.mean(mags, axis=0)
+        dX_bar = 2 * np.sum(dX_bar_n, axis=0) / (avg_mag.reshape(K, 1) + 10 ** (-120))
+        #dX_bar = 2 * np.sum(x_diff * (scale * rbf).reshape(n, K, 1), axis=0)
+        #dX_bar/= np.sum(dX_bar ** 2.0) ** 0.5 + 0.001
+        #Compute the z grad
+        dp_dz = 2 * z * p * rbf * (-sq_sum_nk + np.sum(p * sq_sum_nk, axis=1).reshape(n, 1))
+        dC_dz = np.sum(dp_dz * sq_sum_nk)
+        return dX_bar, p, dC_dz
+
 
     def compute_grads_exp(self, X, X_bar, W):
         p = self._compute_p(W)
