@@ -30,9 +30,16 @@ def k_centres_d_space(K, d, per_cluster):
         while is_too_close(new_centre, centres, 2.0):
             new_centre = np.random.uniform(low=-5.0, high=5.0, size=(1, d))
         centres.append(new_centre)
-    clusters = [0.5*sci.truncnorm.rvs(-1.0, 1.0, scale=1.0, size=(per_cluster, d)) + c for c in centres]
-    global_opt = _compute_global_opt(clusters, centres, d, K * per_cluster)
+        #one_dist = np.random.randn(per_cluster, d)
+        # one_dist = sci.truncnorm.rvs(-1.0, 1.0, scale=1.0, size=(per_cluster, d))
+    pcs = [per_cluster for i in xrange(K)] # + np.random.randint(-5, 6)
+    clusters = [2.0 * np.random.uniform(size=(pc, d)) + c for c, pc in zip(centres, pcs)] #0.5 * np.random.randn(pc, d)
+    global_opt = _compute_global_opt(clusters, centres, d, sum(pcs))
     return clusters, centres, global_opt
+
+def uniform_field():
+    coord_grid = np.meshgrid(np.arange(16, dtype=np.float32), np.arange(16, dtype=np.float32))
+    return 0.75 * np.array([xi.flatten() for xi in coord_grid]).transpose() - 6.0
 
 def _compute_global_opt(clusters, centres, d, n):
     global_opt = [np.sum((clust - c) ** 2.0) for clust, c in zip(clusters, centres)]

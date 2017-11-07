@@ -83,32 +83,47 @@ class GDC:
             p_sum_max[e] = np.max(np.sum(p, axis=0))
         return p, X_bar, all_prev, GradStats(all_dW, all_dX_bar, dW_max, dX_bar_max, p_sum_max)
 
-    def train_sgd(self, X, K, lr, epochs, m, X_bar):
-        z = 1.0
+    def train_sgd(self, X, K, lr, epochs, m, X_bar, weights=False):
         n, d = X.shape
+        w_lr = 0.01
+        z = 0.1 #* np.ones((K, d))
+        if weights:
+            z *= np.ones((K, d))
+        #z = 0.5
         W = np.random.randn(n, K)
         all_prev = []
         # Train
         batch_indicies = np.arange(n)
         p = np.zeros((n, X_bar.shape[0]))
         for e in xrange(epochs):
-            if (e+1) % 100 == 0:
+            if (e+1) % (epochs / 4) == 0:
                 lr *= 0.35
-            if(e+1) % 300 == 0:
+            if(e+1) % (3 * epochs / 4) == 0:
                 m = n
+                w_lr *= 0.1
             all_prev.append(X_bar)
             X_bar = np.copy(X_bar)
             np.random.shuffle(batch_indicies)
             for k in xrange(0, n, m):
                 batch = batch_indicies[k:k + m]
-                dX_bar, p[batch], dC_dz = self.compute_grads_soft_rbf(X[batch], X_bar, z)
+                #dX_bar, p[batch], dC_dz = self.compute_grads_soft_rbf(X[batch], X_bar, z)
+                if weights:
+                    dX_bar, p[batch], dJ_dz = self.cg_dual_p(X[batch], X_bar, z)
+                    z += w_lr * dJ_dz
+                else:
+                    dX_bar, p[batch], dJ_dz, dp_dz = self.compute_grads_soft_rbf(X[batch], X_bar, z)
+                    if e == 390 or e == 391:
+                        print "HERE:"
+                        print np.min(dp_dz)
+                        print np.max(dp_dz)
+                    z -= 0.1 * z * np.sign(dJ_dz)
                 #dW, dX_bar, p[batch] = self.compute_grads_exp(X[batch], X_bar, W[batch])
                 #dW, dX_bar, mm_dW, p[batch] = self.compute_grads(X[batch], X_bar, W[batch], mm_dW)
                 # dW, dX_bar, p = self.compute_grads_per_clust_cost(X, X_bar, W)
                 #W[batch] -= lr * dW
                 X_bar = X_bar + lr * dX_bar
-                z -= 0.1* z * np.sign(dC_dz)
-        print "z: "+str(z)
+                # z += 0.01 * dJ_dz
+        print "w: "+str(z)
         return p, X_bar, all_prev
 
     def compute_grads(self, X, X_bar, W):
@@ -214,22 +229,24 @@ class GDC:
         dX_bar_n = z ** 2.0 * x_diff * (p * rbf).reshape(n, K, 1)
         mags = np.sum(dX_bar_n ** 2.0, axis=2) ** 0.5
         avg_mag = np.mean(mags, axis=0)
-        dX_bar = 2 * np.sum(dX_bar_n, axis=0) / (avg_mag.reshape(K, 1) + 10 ** (-120))
+        dX_bar = 2 / float(n) * np.sum(dX_bar_n, axis=0) / (avg_mag.reshape(K, 1) + 10 ** (-120))
         #dX_bar = 2 * np.sum(x_diff * (scale * rbf).reshape(n, K, 1), axis=0)
         #dX_bar/= np.sum(dX_bar ** 2.0) ** 0.5 + 0.001
         #Compute the z grad
         dp_dz = 2 * z * p * rbf * (-sq_sum_nk + np.sum(p * sq_sum_nk, axis=1).reshape(n, 1))
         dC_dz = np.sum(dp_dz * sq_sum_nk)
-        return dX_bar, p, dC_dz
+        return dX_bar, p, dC_dz, dp_dz
 
     def cg_soft_rbf_weights(self, X, X_bar, z):
         n, d = X.shape
         K, _ = X_bar.shape
         x_diff = self._compute_diff(X, X_bar)
-        dist_sq = (z * x_diff) ** 2.0
+        dist_sq = x_diff ** 2.0
+        w_dist_sq = z ** 2.0 * dist_sq
         sq_sum_nk = np.sum(dist_sq, axis=2)
+        w_sq_sum_nk = np.sum(w_dist_sq, axis=2)
         #rbf = self.rbf(0.5 * sq_sum_nk)
-        rbf = self.rbf(sq_sum_nk / float(d))
+        rbf = self.rbf(w_sq_sum_nk / float(d))
         #scale = self._compute_p(-10*sq_sum_nk)
         p = self._compute_p(200 * rbf)
         dX_bar_n = z ** 2.0 * x_diff * (p * rbf).reshape(n, K, 1)
@@ -239,9 +256,46 @@ class GDC:
         #dX_bar = 2 * np.sum(x_diff * (scale * rbf).reshape(n, K, 1), axis=0)
         #dX_bar/= np.sum(dX_bar ** 2.0) ** 0.5 + 0.001
         #Compute the z grad
-        dp_dz = 2 * z * p * rbf * (-sq_sum_nk + np.sum(p * sq_sum_nk, axis=1).reshape(n, 1))
-        dC_dz = np.sum(dp_dz * sq_sum_nk)
+        p_shaped = p.reshape(n, K, 1)
+        w_shaped = z.reshape(1, 1, d)
+        dp_dz = 2 * w_shaped * (p * rbf).reshape(n, K, 1) * (-dist_sq + np.sum(p_shaped * dist_sq, axis=1).reshape(n, 1, d))
+        dC_dz = np.sum(dp_dz * w_sq_sum_nk.reshape(n, K, 1), axis=(0, 1))
+        dC_dz /= np.sum(dC_dz ** 2.0) ** 0.5 + 10 ** (-120)
         return dX_bar, p, dC_dz
+
+    def cg_dual_p(self, X, X_bar, w):
+        n, d = X.shape
+        K, _ = X_bar.shape
+        x_diff = self._compute_diff(X, X_bar)
+        dist_sq = x_diff ** 2.0
+        sq_sum_nk = np.sum(dist_sq, axis=2)
+        w_sq_sum_nk = np.sum(w ** 2.0 * dist_sq, axis=2)
+        rbf = self.rbf(w_sq_sum_nk / float(d))
+        p = self._compute_p(200.0 * rbf)
+        closest_to = np.argmin(w_sq_sum_nk, axis=1)
+        p2 = np.zeros((n, K))
+        i_indices = np.arange(n)
+        #p2[i_indices, closest_to] = 1.0
+        p2 = self._compute_p(- w_sq_sum_nk)
+        w_shaped = w.reshape(1, K, d)
+        dX_bar_n = 4 * w_shaped ** 2.0 * x_diff * (rbf * p).reshape(n, K, 1) # * (p - np.sum(p ** 2.0, axis=1).reshape(n, 1))
+        mags = np.sum(dX_bar_n ** 2.0, axis=2) ** 0.5
+        avg_mag = np.mean(mags, axis=0)
+        dX_bar = np.sum(dX_bar_n, axis=0) / (avg_mag.reshape(K, 1) + 10 ** (-120))
+        current_vars = np.sum(p2.reshape(n, K, 1) * dist_sq, axis=0) / float(n)
+        dJ_dw = current_vars ** 0.5 - w
+        dJ_dw /= (np.sum(dJ_dw ** 2.0, axis=1) ** 0.5).reshape(K, 1)
+        # dJ_dw_n = - 4 * w_shaped * dist_sq * (rbf * p * (p - np.sum(p ** 2.0, axis=1).reshape(n, 1))).reshape(n, K, 1)
+        # mags = np.sum(dJ_dw_n ** 2.0, axis=2) ** 0.5
+        # avg_mag = np.mean(mags, axis=0)
+        # dJ_dw = np.sum(dJ_dw_n, axis=0) / (avg_mag.reshape(K, 1) + 10 ** (-120))
+        return dX_bar, p, dJ_dw
+
+    def cg_fit_gauss(self, x_diff, w):
+        dist_sq = x_diff ** 2.0
+        _sq_sum_nk = np.sum(w ** 2.0 * dist_sq, axis=2)
+        rbf = self.rbf(w_sq_sum_nk / float(d))
+
 
 
     def compute_grads_exp(self, X, X_bar, W):
@@ -299,7 +353,7 @@ class GDC:
         return K ** 2.0 * C
 
     def train_and_cost(self, tp, K):
-        """Train GDC adn report the cost"""
+        """Train GDC and report the cost"""
         W, X_bar, _ = self.train(tp.X, K, tp.lr, tp.epochs)
         return self.cost(tp.X, W, X_bar)
 
@@ -307,7 +361,7 @@ class GDC:
     def _compute_p(self, W):
         n, _ = W.shape
         exp_W = np.exp(W)
-        p = exp_W / np.sum(exp_W, axis=1).reshape(n, 1)
+        p = exp_W / (np.sum(exp_W, axis=1).reshape(n, 1) + 10 ** (-120))
         return p
 
     def _compute_diff(self, X, X_bar):

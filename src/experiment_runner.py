@@ -42,7 +42,7 @@ def run_and_report_grads(K, d, n_per_cluster, lr, epochs, num_runs, m=None):
         # Update agregates
         total_opt += global_opt
         total_gdc += gdc_C
-        if gdc_C < global_opt + 0.1:
+        if gdc_C < global_opt: #+ 0.1:
             gdc_under += 1
         else:
             print "Global Optimum: " + str(global_opt) + "   GDC: " + str(gdc_C)
