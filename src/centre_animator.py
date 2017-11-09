@@ -13,6 +13,8 @@ def animate(clusters, all_prev_lists):
     epochs = len(all_prev_lists[0])
     ax.set_xlim(-7.0, 7.0)
     ax.set_ylim(-7.0, 7.0)
+    # ax.set_xlim(-14.0, 14.0)
+    # ax.set_ylim(-14.0, 14.0)
 
     #Plot the inital centres
     num_algs = len(all_prev_lists)

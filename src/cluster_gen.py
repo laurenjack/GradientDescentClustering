@@ -38,8 +38,28 @@ def k_centres_d_space(K, d, per_cluster):
     return clusters, centres, global_opt
 
 def uniform_field():
-    coord_grid = np.meshgrid(np.arange(16, dtype=np.float32), np.arange(16, dtype=np.float32))
-    return 0.75 * np.array([xi.flatten() for xi in coord_grid]).transpose() - 6.0
+    coord_grid = np.meshgrid(np.arange(32, dtype=np.float32), np.arange(32, dtype=np.float32))
+    return 0.75 * np.array([xi.flatten() for xi in coord_grid]).transpose() - 12.0
+
+def K_clust_on_line(K, per_clust, ep=0.1):
+    #Build the boundries between clusters
+    gap = 10.0 / float(K - 1)
+    boundaries = np.zeros(K+1)
+    offset = -5.0 - gap/2.0
+    for k in xrange(K+1):
+        boundaries[k] = offset + k*gap
+
+    #Build the clusters
+    x = gap / (per_clust +ep)
+    y = x + ep
+    n = K * per_clust
+    X = np.zeros(n)
+    for k in xrange(K):
+        for j in xrange(per_clust):
+            index = k*per_clust + j
+            X[index] = boundaries[k] + 0.5*y + j*x
+    return X.reshape(n, 1)
+
 
 def _compute_global_opt(clusters, centres, d, n):
     global_opt = [np.sum((clust - c) ** 2.0) for clust, c in zip(clusters, centres)]

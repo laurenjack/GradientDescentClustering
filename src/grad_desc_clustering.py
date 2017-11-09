@@ -86,7 +86,7 @@ class GDC:
     def train_sgd(self, X, K, lr, epochs, m, X_bar, weights=False):
         n, d = X.shape
         w_lr = 0.01
-        z = 0.1 #* np.ones((K, d))
+        z = 0.2 #* np.ones((K, d))
         if weights:
             z *= np.ones((K, d))
         #z = 0.5
@@ -111,12 +111,12 @@ class GDC:
                     dX_bar, p[batch], dJ_dz = self.cg_dual_p(X[batch], X_bar, z)
                     z += w_lr * dJ_dz
                 else:
-                    dX_bar, p[batch], dJ_dz, dp_dz = self.compute_grads_soft_rbf(X[batch], X_bar, z)
+                    dX_bar, p[batch], dJ_dz, dp_dz = self.compute_grads_soft_rbf_test(X[batch], X_bar, z)
                     if e == 390 or e == 391:
                         print "HERE:"
                         print np.min(dp_dz)
                         print np.max(dp_dz)
-                    z -= 0.1 * z * np.sign(dJ_dz)
+                    #z -= 0.1 * z * np.sign(dJ_dz)
                 #dW, dX_bar, p[batch] = self.compute_grads_exp(X[batch], X_bar, W[batch])
                 #dW, dX_bar, mm_dW, p[batch] = self.compute_grads(X[batch], X_bar, W[batch], mm_dW)
                 # dW, dX_bar, p = self.compute_grads_per_clust_cost(X, X_bar, W)
@@ -225,7 +225,7 @@ class GDC:
         #rbf = self.rbf(0.5 * sq_sum_nk)
         rbf = self.rbf(z ** 2.0 / float(d) * sq_sum_nk)
         #scale = self._compute_p(-10*sq_sum_nk)
-        p = self._compute_p(200 * rbf)
+        p = self._compute_p(200.0 * rbf)
         dX_bar_n = z ** 2.0 * x_diff * (p * rbf).reshape(n, K, 1)
         mags = np.sum(dX_bar_n ** 2.0, axis=2) ** 0.5
         avg_mag = np.mean(mags, axis=0)
@@ -233,6 +233,30 @@ class GDC:
         #dX_bar = 2 * np.sum(x_diff * (scale * rbf).reshape(n, K, 1), axis=0)
         #dX_bar/= np.sum(dX_bar ** 2.0) ** 0.5 + 0.001
         #Compute the z grad
+        dp_dz = 2 * z * p * rbf * (-sq_sum_nk + np.sum(p * sq_sum_nk, axis=1).reshape(n, 1))
+        dC_dz = np.sum(dp_dz * sq_sum_nk)
+        return dX_bar, p, dC_dz, dp_dz
+
+    def compute_grads_soft_rbf_test(self, X, X_bar, z):
+        n, d = X.shape
+        K, _ = X_bar.shape
+        x_diff = self._compute_diff(X, X_bar)
+        dist_sq = x_diff ** 2.0
+        sq_sum_nk = np.sum(dist_sq, axis=2)
+        #rbf = self.rbf(0.5 * sq_sum_nk)
+        rbf = self.rbf(z ** 2.0 / float(d) * sq_sum_nk)
+        #scale = self._compute_p(-10*sq_sum_nk)
+        p = self._compute_p(10.0 * rbf)
+        dX_bar_n = z ** 2.0 * x_diff * (p * rbf).reshape(n, K, 1)
+        mags = np.sum(dX_bar_n ** 2.0, axis=2) ** 0.5
+        avg_mag = np.mean(mags, axis=0)
+        dX_bar = 2 / float(n) * np.sum(dX_bar_n, axis=0) / (avg_mag.reshape(K, 1) + 10 ** (-120))
+        to_7 = 2 / float(n) * np.sum(dX_bar_n[:7], axis=0) / avg_mag.reshape(K, 1)
+        to_12 = 2 / float(n) * np.sum(dX_bar_n[7:], axis=0)/ avg_mag.reshape(K, 1)
+        #dX_bar = 2 * np.sum(x_diff * (scale * rbf).reshape(n, K, 1), axis=0)
+        #dX_bar/= np.sum(dX_bar ** 2.0) ** 0.5 + 0.001
+        #Compute the z grad
+        dX_bar_n_scaled =   2 / float(n) * dX_bar_n[:,:,0] / avg_mag
         dp_dz = 2 * z * p * rbf * (-sq_sum_nk + np.sum(p * sq_sum_nk, axis=1).reshape(n, 1))
         dC_dz = np.sum(dp_dz * sq_sum_nk)
         return dX_bar, p, dC_dz, dp_dz
