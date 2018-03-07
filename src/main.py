@@ -2,21 +2,25 @@ from cluster_gen import *
 from grad_desc_clustering import GDC
 from convex_opt import *
 from centre_animator import animate
+from centre_animator import plot_z
 import k_means
 import numpy as np
 import cluster_utils
 
-K = 3
-per_clust = 4
+K = 2
+per_clust = 6
 lr = 1.0
 d = 1
-epochs = 400
+epochs = 800
 # Generate the clusters
 #clusters, actual_centres, global_opt = k_gaussian_clusters(K)
 # clusters, actual_centres, global_opt = k_centres_d_space(K, 2, 10)
 # X = np.concatenate(clusters, axis=0)
 #X = uniform_field()
-X = K_clust_on_line(K, per_clust, ep=-0.0)
+#X = K_clust_on_line(K, per_clust, ep=-0.0)
+X = np.array([-2.0, -2.0, -2.0, -2.0, -2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.2, 3.2]).reshape(12, 1)
+#X = np.array([-4.0, -3.5, -3.0, -2.0, -1.5, -1.0, 3.5 + 2.0, 4.0+ 2.0, 4.25+ 2.0, 4.5+ 2.0]).reshape(10, 1)
+#X = np.array([-4.0, -4.0, -4.0, -4.0, -4.0, -2.0, -2.0, -2.0, -2.0, -2.0, 4.0, 5.0]).reshape(12, 1)
 #X = np.array([-6.875, -5.625, -4.375]).reshape(3, 1) #, 4.375, 5.625, 6.875]).reshape(6, 1)
 
 # Choose K for GDC
@@ -29,18 +33,22 @@ gdc = GDC()
 #X_bar = np.random.uniform(low=-10, high=10, size=(K, d))
 #X_bar = np.random.uniform(low=-5.0, high=5.0, size=(K, d))
 #X_bar = np.array([-5.0, 0.0, 5.0]).reshape(K, 1)
-X_bar = np.array([-4.375, 1.25, 5.625]).reshape(K, 1)
+#X_bar = np.array([-4.375, 1.25, 5.625]).reshape(K, 1)
 #X_bar = np.array([-6.0]).reshape(K, 1) # , 5.6252
 #X_bar = np.array([-2.5, 3.75, 6.25]).reshape(K, 1)
 #X_bar = np.array([-5.0, -1.667, 1.667, 5.0]).reshape(4, 1)
+X_bar = np.array([-1.0, 2.7]).reshape(K, 1)
+#X_bar = np.array([-3.5, -1.5]).reshape(K, 1)
+print cluster_utils.cost_of_closest_to(X, X_bar)
+#X_bar = np.array([-3.0, 4.5]).reshape(K, 1)
 #START
-print X_bar
+#print X_bar
 
 
 # Train the clustering algorithms
 #p, X_bar_gdc, all_prev_gdc, all_grads = gdc.train_groups(X, 8, lr, epochs, X_bar)
 #p, X_bar_gdc, all_prev_gdc, all_grads = gdc.train(X, K, lr, epochs, X_bar, L=None)
-p, X_bar_gdc, all_prev_gdc = gdc.train_sgd(X, K, lr, epochs, 12, X_bar)
+p, X_bar_gdc, all_prev_gdc, all_prev_z = gdc.train_sgd(X, K, lr, epochs, 12, X_bar)
 #p_w, X_bar_gdc_w, all_prev_gdc_weights = gdc.train_sgd(X, K, lr, epochs, 10, X_bar, weights=True)
 
 #kMeans = k_means.KMeans()
@@ -70,6 +78,7 @@ all_prev_lists = [all_prev_gdc]#, all_prev_gdc_weights]
 
 # Animate
 animate([X], all_prev_lists)
+plot_z(all_prev_z)
 # animate(clusters, all_prev_lists)
 
 # n_div_k,  _, d = clusters.shape

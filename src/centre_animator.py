@@ -41,6 +41,13 @@ def animate(clusters, all_prev_lists):
     ani = FuncAnimation(fig, update, frames=epochs - 1, init_func=init, interval=50, repeat=False)
     plt.show()
 
+def plot_z(all_prev_z):
+    epochs = all_prev_z.shape[0]
+    x = np.arange(epochs)
+    plt.plot(x, all_prev_z)
+    plt.show()
+
+
 
 def _draw(clusters):
     K = len(clusters)
